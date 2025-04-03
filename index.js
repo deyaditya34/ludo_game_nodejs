@@ -1,161 +1,19 @@
-const players = [
-  {
-    name: "RED",
-    pawns: [
-      {
-        start_from: 0,
-        pos_offset: 16,
-        in_home_column: false,
-        in_starting_area: true,
-      },
-      {
-        start_from: 0,
-        pos_offset: 0,
-        in_home_column: false,
-        in_starting_area: true,
-      },
-      {
-        start_from: 0,
-        pos_offset: 0,
-        in_home_column: false,
-        in_starting_area: true,
-      },
-      {
-        start_from: 0,
-        pos_offset: 0,
-        in_home_column: false,
-        in_starting_area: true,
-      },
-    ],
-  },
-  {
-    name: "GREEN",
-    pawns: [
-      {
-        start_from: 13,
-        pos_offset: 0,
-        in_home_column: false,
-        in_starting_area: true,
-      },
-      {
-        start_from: 13,
-        pos_offset: 3,
-        in_home_column: false,
-        in_starting_area: true,
-      },
-      {
-        start_from: 13,
-        pos_offset: 0,
-        in_home_column: false,
-        in_starting_area: true,
-      },
-      {
-        start_from: 13,
-        pos_offset: 0,
-        in_home_column: false,
-        in_starting_area: true,
-      },
-    ],
-  },
-  {
-    name: "YELLOW",
-    pawns: [
-      {
-        start_from: 26,
-        pos_offset: 0,
-        in_home_column: false,
-        in_starting_area: true,
-      },
-      {
-        start_from: 26,
-        pos_offset: 0,
-        in_home_column: false,
-        in_starting_area: true,
-      },
-      {
-        start_from: 26,
-        pos_offset: 0,
-        in_home_column: false,
-        in_starting_area: true,
-      },
-      {
-        start_from: 26,
-        pos_offset: 0,
-        in_home_column: false,
-        in_starting_area: true,
-      },
-    ],
-  },
-  {
-    name: "BLUE",
-    pawns: [
-      {
-        start_from: 39,
-        pos_offset: 0,
-        in_home_column: false,
-        in_starting_area: true,
-      },
-      {
-        start_from: 39,
-        pos_offset: 0,
-        in_home_column: false,
-        in_starting_area: true,
-      },
-      {
-        start_from: 39,
-        pos_offset: 0,
-        in_home_column: false,
-        in_starting_area: true,
-      },
-      {
-        start_from: 39,
-        pos_offset: 0,
-        in_home_column: false,
-        in_starting_area: true,
-      },
-    ],
-  },
-];
+const game = require("./game")
+const input = require("./input")
 
-function move_player(player_index, pawn_index, move_by) {
-  const pawn = players[player_index].pawns[pawn_index];
+async function main() {
+  const game1 = game.create_new()
+  render_game_to_console(game1.get_state())
 
-  if (pawn.in_starting_area) {
-    if (move_by === 6) {
-      pawn.in_starting_area = false;
-      return [true, null];
-    }
-
-    return [false, new Error("INVALID_MOVE/PAWN_STILL_IN_STARTING_AREA")];
-  }
-
-  let new_pos_offset = pawn.pos_offset + move_by;
-
-  if (pawn.in_home_column) {
-    if (new_pos_offset > 6) {
-      return [false, new Error("INVALID_MOVE/MOVE_PAST_HOME")];
-    }
-    pawn.pos_offset = new_pos_offset;
-    return [true, null];
-  } else {
-    if (new_pos_offset > 50) {
-      new_pos_offset -= 50;
-      pawn.pos_offset = new_pos_offset;
-      pawn.in_home_column = true;
-      return [true, null];
-    }
-    pawn.pos_offset = new_pos_offset;
-    return [true, null];
+  while (true) {
+    const game_input = await input.get_relevant_input(game1.get_state())
+    game1.process_input(game_input)
+    render_game_to_console(game1.get_state())
   }
 }
 
-// function render_pawn(player_index, pawn_index) {
-//   const pawnBoardPosition = findPawnAbsolutePosition(player_index, pawn_index);
-
-//   return [pawnBoardPosition, null];
-// }
-
-function render_board() {
+function render_game_to_console(game_state) {
+  const players = game_state.players
   const result = [];
 
   players.forEach((player, i) => {
@@ -163,28 +21,19 @@ function render_board() {
     let pawnsBoardPosition = [];
 
     for (let j = 0; j < player.pawns.length; j++) {
-      pawnsBoardPosition.push(findPawnAbsolutePosition(i, j));
+      pawnsBoardPosition.push({ pos: findPawnAbsolutePosition(players, i, j), in_home_column: player.pawns[j].in_home_column });
     }
 
     result.push({ playerName, pawns: pawnsBoardPosition });
   });
 
-  return result;
+  console.log(JSON.stringify(result, null, 2))
+  console.log("Current player: ", players[game_state.current_player_turn].name)
 }
 
-function checkPawnFinish(player_index, pawn_index) {
+function findPawnAbsolutePosition(players, player_index, pawn_index) {
   const pawn = players[player_index].pawns[pawn_index];
-
-  if (pawn.pos_offset === 5 && pawn.in_home_column === true) {
-    return true;
-  }
-
-  return false;
-}
-
-function findPawnAbsolutePosition(player_index, pawn_index) {
-  const pawn = players[player_index].pawns[pawn_index];
-  const pawnBoardPosition = pawn.start_from + pawn.pos_offset;
+  let pawnBoardPosition = pawn.start_from + pawn.pos_offset;
 
   if (pawnBoardPosition > 51) {
     pawnBoardPosition -= 52;
@@ -193,23 +42,4 @@ function findPawnAbsolutePosition(player_index, pawn_index) {
   return pawnBoardPosition;
 }
 
-function findOpponentsElimination(player_index, pawn_index) {
-  const playerName = players[player_index].name;
-  const pawnBoardPosition = findPawnAbsolutePosition(player_index, pawn_index);
-
-  const result = [];
-
-  for (let i = 0; i < players.length; i++) {
-    if (playerName !== players[i].name) {
-      for (let j = 0; j < players[i].pawns.length; j++) {
-        const opponentPawnBoardPosition = findPawnAbsolutePosition(i, j);
-
-        if (pawnBoardPosition === opponentPawnBoardPosition) {
-          result.push({ playerName: players[i].name, pawn: j });
-        }
-      }
-    }
-  }
-
-  return result
-}
+main()
