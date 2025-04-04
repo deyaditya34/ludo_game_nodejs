@@ -2,7 +2,7 @@ function create_new() {
   return {
     status: "PLAYING",
     mode: "4_PLAYERS",
-    required_input: "DICE_SCORE",
+    required_input: "DICE_SCORE_MOVE_PAWN",
     current_player_turn: 0,
     players: [
       {
@@ -12,7 +12,7 @@ function create_new() {
             start_from: 0,
             pos_offset: 16,
             in_home_column: false,
-            in_starting_area: true,
+            in_starting_area: false,
           },
           {
             start_from: 0,
@@ -125,17 +125,18 @@ function create_new() {
 
     process_input(game_input) {
       const [ok, err] = move_player(
-        this.current_player,
+        this.players,
         this.current_player_turn,
         game_input.pawn_to_move,
         game_input.move_by
       );
-
+      
       if (!ok) {
+        this.current_player_turn = (this.current_player_turn + 1) % 4;
         // add error handling logic here for pawn did not move
         return [ok, err];
       } else {
-        this.current_player = (this.current_player + 1) % 4;
+        this.current_player_turn = (this.current_player_turn + 1) % 4;
         return [ok, err];
       }
     },
@@ -179,7 +180,7 @@ function move_player(players, player_index, pawn_index, move_by) {
     return [false, new Error("INVALID_MOVE/PAWN_STILL_IN_STARTING_AREA")];
   }
   let new_pos_offset = pawn.pos_offset + move_by;
-
+  
   if (pawn.in_home_column) {
     if (new_pos_offset > 6) {
       return [false, new Error("INVALID_MOVE/MOVE_PAST_HOME")];
