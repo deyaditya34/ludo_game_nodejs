@@ -7,9 +7,8 @@ async function main() {
 
   while (true) {
     const game_input = await input.get_relevant_input(game1.get_state());
-    console.log("game_input -", game_input);
-    // game1.process_input(game_input);
-    // render_game_to_console(game1.get_state());
+    game1.process_input(game_input);
+    render_game_to_console(game1.get_state());
   }
 }
 
