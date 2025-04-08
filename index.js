@@ -13,6 +13,10 @@ async function main() {
 }
 
 function render_game_to_console(game_state) {
+  if (game_state.status_message) {
+    console.log(game_state.status_message);
+  }
+
   const players = game_state.players;
 
   const result = [];

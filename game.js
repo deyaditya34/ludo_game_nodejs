@@ -4,6 +4,11 @@ function create_new() {
     mode: "4_PLAYERS",
     required_input: "DICE_SCORE_MOVE_PAWN",
     current_player_turn: 0,
+    status_message: null,
+    dice_score: 0,
+    dice_carry_forward_count: 0,
+    dice_score_arr: [],
+    dice_score_count: 0,
     players: [
       {
         name: "RED",
@@ -130,7 +135,7 @@ function create_new() {
         game_input.pawn_to_move,
         game_input.move_by
       );
-      
+
       if (!ok) {
         this.current_player_turn = (this.current_player_turn + 1) % 4;
         // add error handling logic here for pawn did not move
@@ -180,7 +185,7 @@ function move_player(players, player_index, pawn_index, move_by) {
     return [false, new Error("INVALID_MOVE/PAWN_STILL_IN_STARTING_AREA")];
   }
   let new_pos_offset = pawn.pos_offset + move_by;
-  
+
   if (pawn.in_home_column) {
     if (new_pos_offset > 6) {
       return [false, new Error("INVALID_MOVE/MOVE_PAST_HOME")];
