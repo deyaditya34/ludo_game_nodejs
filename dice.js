@@ -37,10 +37,47 @@ function isDiceScoreComplete() {
   return false;
 }
 
-function resetDiceScore() {
-  diceScore = 0;
-  diceScoreCount = 0;
-  diceScoreArr = [];
+function generateRandomNumber() {
+  let number = Math.round(Math.random() * 6);
+
+  while (!number) {
+    number = Math.floor(Math.random() * 6);
+  }
+  return number;
+}
+
+function throwDice() {
+  // const resetScore = isDiceScoreComplete();
+
+  // if (resetScore) {
+  //   diceScore = 0;
+  //   diceScoreCount = 0;
+  //   diceScoreArr = [];
+  // }
+
+  const score = generateRandomNumber();
+
+  // if (carryForwardScoreCount === 3) {
+  //   diceScore = 0;
+  //   diceScoreCount = 0;
+  //   diceScoreArr = [];
+  //   carryForwardScoreCount = 0;
+  //   return;
+  // }
+
+  // if (score === 6) {
+  //   carryForwardScoreCount++;
+  //   diceScore += score;
+  //   diceScoreArr.push(score);
+  //   diceScoreCount += 1;
+  //   return;
+  // }
+
+  // diceScore += score;
+  // diceScoreArr.push(score);
+  // diceScoreCount += 1;
+
+  return score;
 }
 
 module.exports = {
