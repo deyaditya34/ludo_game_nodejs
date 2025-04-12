@@ -4,42 +4,43 @@ function create_new() {
     mode: '4_PLAYERS',
     required_input: 'SELECT_PAWN',
     current_player_turn: 0,
-    pawn_to_move: 0,
-    status_message: 0,
-    dice_score: 2,
-    dice_carry_forward_count: 1,
-    dice_score_arr: [2],
-    dice_score_selected: null,
-    dice_score_count: 1,
+    pawn_to_move: null,
+    status_message: null,
     opponents_elimination_list: [],
+    total_players: 4,
     winner_list: [],
+    dice: {
+      dice_score: 0,
+      dice_score_arr: [],
+      dice_score_selected: null,
+    },
     players: [
       {
         name: 'RED',
         pawns: [
           {
             start_from: 0,
-            pos_offset: 4,
-            in_home_column: true,
+            pos_offset: 0,
+            in_home_column: false,
             in_starting_area: false,
           },
           {
             start_from: 0,
-            pos_offset: 6,
-            in_home_column: true,
-            in_starting_area: false,
+            pos_offset: 0,
+            in_home_column: false,
+            in_starting_area: true,
           },
           {
             start_from: 0,
-            pos_offset: 6,
-            in_home_column: true,
-            in_starting_area: false,
+            pos_offset: 0,
+            in_home_column: false,
+            in_starting_area: true,
           },
           {
             start_from: 0,
-            pos_offset: 6,
-            in_home_column: true,
-            in_starting_area: false,
+            pos_offset: 0,
+            in_home_column: false,
+            in_starting_area: true,
           },
         ],
       },
@@ -48,9 +49,9 @@ function create_new() {
         pawns: [
           {
             start_from: 13,
-            pos_offset: 3,
+            pos_offset: 0,
             in_home_column: false,
-            in_starting_area: false,
+            in_starting_area: true,
           },
           {
             start_from: 13,
@@ -77,9 +78,9 @@ function create_new() {
         pawns: [
           {
             start_from: 26,
-            pos_offset: 42,
+            pos_offset: 0,
             in_home_column: false,
-            in_starting_area: false,
+            in_starting_area: true,
           },
           {
             start_from: 26,
@@ -134,64 +135,73 @@ function create_new() {
 
     process_input(game_input) {
       if (this.required_input === 'DICE_SCORE') {
-        this.dice_score += game_input.move_by;
-        this.dice_score_arr.push(game_input.move_by);
-        this.dice_score_count++;
+        this.dice.dice_score += game_input.move_by;
+        this.dice.dice_score_arr.push(game_input.move_by);
 
-        if (game_input.move_by === 6) {
-          this.dice_carry_forward_count++;
-
-          if (this.dice_carry_forward_count >= 3) {
-            this.status_message = `'${
-              this.players[this.current_player_turn].name
-            }' score - ${this.dice_score_arr.join(
-              ' '
-            )} is invalid at this point of time.`;
-
-            this.dice_score = 0;
-            this.dice_score_count = 0;
-            this.dice_score_arr = [];
-
-            this.current_player_turn = (this.current_player_turn + 1) % 4;
-            return;
-          }
-        }
-
-        const player_turn_complete = is_dice_score_complete(
-          this.dice_score_arr
+        const player_turn_complete = is_player_turn_complete(
+          this.dice.dice_score_arr
         );
 
-        if (!player_turn_complete) {
+        if (!player_turn_complete.player_turn_complete) {
           this.status_message = `player -'${
             this.players[this.current_player_turn].name
-          }' turn continues. Score - ${this.dice_score_arr.join(' ')}`;
+          }' turn continues. Score - ${this.dice.dice_score_arr.join(' ')}`;
           return;
         }
 
-        this.status_message = `player -'${
-          this.players[this.current_player_turn].name
-        } -' score - ${this.dice_score_arr.join(' ')}`;
+        if (
+          player_turn_complete.player_turn_complete &&
+          player_turn_complete.player_turn_change
+        ) {
+          this.status_message = `'${
+            this.players[this.current_player_turn].name
+          }' score - ${this.dice.dice_score_arr.join(
+            ' '
+          )} is invalid at this point of time.`;
+
+          this.reset_dice_opponents_list_pawn_selected();
+
+          this.change_player_turn(
+            this.current_player_turn,
+            this.winner_list,
+            this.total_players
+          );
+
+          return;
+        }
+
+        if (
+          player_turn_complete.player_turn_complete &&
+          !player_turn_complete.player_turn_change
+        ) {
+          this.status_message = `player -'${
+            this.players[this.current_player_turn].name
+          } -' score - ${this.dice.dice_score_arr.join(' ')}`;
+        }
 
         const validate_move = validate_player_move(
           this.players,
           this.current_player_turn,
-          this.dice_score_arr
+          this.dice.dice_score_arr
         );
 
         if (!validate_move) {
           this.status_message = `player -'${
             this.players[this.current_player_turn].name
-          } -' score - ${this.dice_score_arr.join(' ')}\n'${
+          } -' score - ${this.dice.dice_score_arr.join(' ')}\n'${
             this.players[this.current_player_turn].name
-          }' score - ${this.dice_score_arr.join(
+          }' score - ${this.dice.dice_score_arr.join(
             ' '
           )} is invalid at this point of time.`;
 
-          this.dice_score = 0;
-          this.dice_score_count = 0;
-          this.dice_score_arr = [];
+          this.reset_dice_opponents_list_pawn_selected();
 
-          this.current_player_turn = (this.current_player_turn + 1) % 4;
+          this.change_player_turn(
+            this.current_player_turn,
+            this.winner_list,
+            this.total_players
+          );
+
           return;
         }
 
@@ -206,18 +216,17 @@ function create_new() {
           this.players[this.current_player_turn].name
         } -'choose pawn - '${this.pawn_to_move}' to move.\nplayer -'${
           this.players[this.current_player_turn].name
-        } -' score - ${this.dice_score_arr.join(' ')}`;
+        } -' score - ${this.dice.dice_score_arr.join(' ')}`;
 
         this.required_input = 'SELECT_DICE_SCORE_TO_MOVE';
         return;
       }
 
       if (this.required_input === 'ELIMINATION_SELECTION') {
-        const validate_opponent_selection = game_input.elimination_selection;
-
         if (
-          validate_opponent_selection < 1 ||
-          validate_opponent_selection > this.opponents_elimination_list.length
+          game_input.elimination_selection < 0 ||
+          game_input.elimination_selection >
+            this.opponents_elimination_list.length - 1
         ) {
           this.status_message =
             `invalid selection by player - '${
@@ -238,50 +247,42 @@ function create_new() {
 
         reset_pawn(
           this.players,
-          this.opponents_elimination_list[validate_opponent_selection - 1]
+          this.opponents_elimination_list[game_input.elimination_selection]
             .player_index,
-          this.opponents_elimination_list[validate_opponent_selection - 1].pawn
+          this.opponents_elimination_list[game_input.elimination_selection].pawn
         );
 
         this.status_message = `player - '${
           this.players[
-            this.opponents_elimination_list[validate_opponent_selection - 1]
+            this.opponents_elimination_list[game_input.elimination_selection]
               .player_index
           ].name
         }' pawn - ${
-          this.opponents_elimination_list[validate_opponent_selection - 1].pawn
+          this.opponents_elimination_list[game_input.elimination_selection].pawn
         }' eliminated by player - '${
           this.players[this.current_player_turn].name
         }'`;
 
-        this.opponents_elimination_list =
-          this.opponents_elimination_list.filter(
-            (player, i) =>
-              i !==
-              this.opponents_elimination_list[validate_opponent_selection - 1]
-                .player_index
-          );
-        this.dice_score -= this.dice_score_selected;
-        this.dice_carry_forward_count -= 1;
-        this.dice_score_count -= 1;
-        this.dice_score_arr = this.dice_score_arr.filter(
-          (score) => score !== this.dice_score_selected
-        );
+        this.opponents_elimination_list = [];
+        this.revaluate_dice_components();
 
-        if (this.dice_score) {
+        if (!is_player_move_complete(this.dice.dice_score)) {
           this.required_input = 'SELECT_PAWN';
           return;
         }
 
-        this.opponents_elimination_list = [];
-        this.current_player_turn = (this.current_player_turn + 1) % 4;
+        this.change_player_turn(
+          this.current_player_turn,
+          this.winner_list,
+          this.total_players
+        );
 
         this.required_input = 'DICE_SCORE';
         return;
       }
 
       if (this.required_input === 'SELECT_DICE_SCORE_TO_MOVE') {
-        const valid_dice_score = this.dice_score_arr.find(
+        const valid_dice_score = this.dice.dice_score_arr.find(
           (score) => score === game_input.select_dice_score
         );
 
@@ -290,7 +291,7 @@ function create_new() {
             this.players[this.current_player_turn].name
           } - score - '${game_input.select_dice_score}' is invalid.\nplayer -'${
             this.players[this.current_player_turn].name
-          } -' score - ${this.dice_score_arr.join(' ')}`;
+          } -' score - ${this.dice.dice_score_arr.join(' ')}`;
           return;
         }
 
@@ -308,91 +309,59 @@ function create_new() {
             this.pawn_to_move
           }' is invalid.\nplayer -'${
             this.players[this.current_player_turn].name
-          } -' score - ${this.dice_score_arr.join(' ')}`;
+          } -' score - ${this.dice.dice_score_arr.join(' ')}`;
 
           this.required_input = 'SELECT_PAWN';
           return;
         }
 
-        this.dice_score_selected = game_input.select_dice_score;
+        this.dice.dice_score_selected = game_input.select_dice_score;
       }
 
-      const [ok, err] = move_player(
+      move_player(
         this.players,
         this.current_player_turn,
         this.pawn_to_move,
-        this.dice_score_selected
+        this.dice.dice_score_selected
       );
 
-      if (ok) {
-        const opponents_eliminate = find_opponents_elimination(
-          this.players,
-          this.current_player_turn,
-          this.pawn_to_move
-        );
+      const opponents_eliminate = find_opponents_elimination(
+        this.players,
+        this.current_player_turn,
+        this.pawn_to_move
+      );
 
-        if (opponents_eliminate.length) {
-          this.opponents_elimination_list = opponents_eliminate;
+      if (opponents_eliminate.length) {
+        this.opponents_elimination_list = opponents_eliminate;
 
-          this.status_message = `player - '${
-            this.players[this.current_player_turn].name
-          }' pawn - '${this.pawn_to_move}' move completed.\n${
-            this.players[this.current_player_turn].name
-          }
-           -' score - ${this.dice_score_arr.join(' ')};`;
-
-          this.status_message += `\nplayers to eliminate - `;
-
-          for (let i = 0; i < this.opponents_elimination_list.length; i++) {
-            this.status_message += `player - '${
-              this.players[this.opponents_elimination_list[i].player_index].name
-            }' pawn - '${this.opponents_elimination_list[i].pawn}'`;
-          }
-
-          this.required_input = 'ELIMINATION_SELECTION';
-          return;
-        }
-
-        const player_won = check_player_win(
-          this.players,
-          this.current_player_turn
-        );
-
-        if (player_won) {
-          this.winner_list.push(this.players[this.current_player_turn].name);
-
-          this.players = this.players.filter(
-            (player, i) => i !== this.current_player_turn
+        if (opponents_eliminate.length === 1) {
+          reset_pawn(
+            this.players,
+            this.opponents_elimination_list[0].player_index,
+            this.opponents_elimination_list[0].pawn
           );
 
-          this.status_message = `congrats player - '${
-            this.winner_list[this.winner_list.length - 1]
-          }' won the game.`;
-
-          this.dice_score -= this.dice_score_selected;
-          this.dice_carry_forward_count -= 1;
-          this.dice_score_count -= 1;
-          this.dice_score_arr = this.dice_score_arr.filter(
-            (score) => score !== this.dice_score_selected
-          );
-
-          this.required_input = 'DICE_SCORE';
-          return;
-        }
-
-        this.dice_score -= this.dice_score_selected;
-        this.dice_carry_forward_count -= 1;
-        this.dice_score_count -= 1;
-        this.dice_score_arr = this.dice_score_arr.filter(
-          (score) => score !== this.dice_score_selected
-        );
-
-        if (this.dice_score === 0) {
           this.status_message = `player - '${
+            this.players[this.opponents_elimination_list[0].player_index].name
+          }' pawn - ${
+            this.opponents_elimination_list[0].pawn
+          }' eliminated by player - '${
             this.players[this.current_player_turn].name
-          }' pawn - '${this.pawn_to_move}' move completed.`;
+          }'`;
 
-          this.current_player_turn = (this.current_player_turn + 1) % 4;
+          this.opponents_elimination_list = [];
+          this.revaluate_dice_components();
+
+          if (!is_player_move_complete(this.dice.dice_score)) {
+            this.required_input = 'SELECT_PAWN';
+            return;
+          }
+
+          this.change_player_turn(
+            this.current_player_turn,
+            this.winner_list,
+            this.total_players
+          );
 
           this.required_input = 'DICE_SCORE';
           return;
@@ -403,11 +372,113 @@ function create_new() {
         }' pawn - '${this.pawn_to_move}' move completed.\n${
           this.players[this.current_player_turn].name
         }
-         -' score - ${this.dice_score_arr.join(' ')};`;
+           -' score - ${this.dice.dice_score_arr.join(' ')};`;
 
-        this.required_input = 'SELECT_PAWN';
+        this.status_message += `\nplayers to eliminate - `;
+
+        for (let i = 0; i < this.opponents_elimination_list.length; i++) {
+          this.status_message += `player - '${
+            this.players[this.opponents_elimination_list[i].player_index].name
+          }' pawn - '${this.opponents_elimination_list[i].pawn}'`;
+        }
+
+        this.required_input = 'ELIMINATION_SELECTION';
         return;
       }
+
+      const player_won = check_player_win(
+        this.players,
+        this.current_player_turn
+      );
+
+      if (player_won) {
+        this.winner_list.push({
+          player_name: this.players[this.current_player_turn].name,
+          player_index: this.current_player_turn,
+        });
+
+        this.status_message = `congrats player - '${
+          this.winner_list[this.winner_list.length - 1].player_name
+        }' won the game.`;
+
+        reset_dice_opponents_list_pawn_selected();
+
+        this.change_player_turn(
+          this.current_player_turn,
+          this.winner_list,
+          this.total_players
+        );
+
+        this.required_input = 'DICE_SCORE';
+        return;
+      }
+
+      this.revaluate_dice_components();
+
+      if (is_player_move_complete(this.dice.dice_score)) {
+        this.status_message = `player - '${
+          this.players[this.current_player_turn].name
+        }' pawn - '${this.pawn_to_move}' move completed.`;
+
+        this.change_player_turn(
+          this.current_player_turn,
+          this.winner_list,
+          this.total_players
+        );
+
+        this.required_input = 'DICE_SCORE';
+        return;
+      }
+
+      this.status_message = `player - '${
+        this.players[this.current_player_turn].name
+      }' pawn - '${this.pawn_to_move}' move completed.\n${
+        this.players[this.current_player_turn].name
+      }
+         -' score - ${this.dice.dice_score_arr.join(' ')};`;
+
+      this.required_input = 'SELECT_PAWN';
+      return;
+    },
+
+    reset_dice_opponents_list_pawn_selected() {
+      this.dice.dice_score = 0;
+      this.dice.dice_score_arr = [];
+      this.dice.dice_score_selected = 0;
+      this.pawn_to_move = null;
+      this.opponents_list = [];
+    },
+
+    change_player_turn(current_player_turn, winners_list, total_players) {
+      let current_player = current_player_turn;
+      let next_player_turn;
+      while (true) {
+        next_player_turn = (current_player + 1) % total_players;
+
+        const next_player_won = winners_list.find(
+          (player) => player.player_index === next_player_turn
+        );
+
+        if (!next_player_won) {
+          this.current_player_turn = next_player_turn;
+          break;
+        }
+
+        if (current_player >= total_players) {
+          current_player = 0;
+        } else {
+          current_player++;
+        }
+      }
+
+      return;
+    },
+
+    revaluate_dice_components() {
+      this.dice.dice_score -= this.dice.dice_score_selected;
+      this.dice.dice_score_arr = this.dice.dice_score_arr.filter(
+        (score) => score !== this.dice.dice_score_selected
+      );
     },
 
     get_state() {
@@ -449,34 +520,26 @@ function move_player(players, player_index, pawn_index, move_by) {
   const pawn = players[player_index].pawns[pawn_index];
 
   if (pawn.in_starting_area) {
-    if (move_by === 6) {
+    if (move_by === 5) {
       pawn.in_starting_area = false;
-      return [true, null];
+      return;
     }
+  }
 
-    return [false, new Error('INVALID_MOVE/PAWN_STILL_IN_STARTING_AREA')];
-  }
   let new_pos_offset = pawn.pos_offset + move_by;
-  if (new_pos_offset > 56) {
-    return [false, new Error('INVALID_MOVE/MOVE_PAST_HOME')];
-  }
 
   if (pawn.in_home_column) {
-    if (new_pos_offset > 6) {
-      return [false, new Error('INVALID_MOVE/MOVE_PAST_HOME')];
-    }
-
     pawn.pos_offset = new_pos_offset;
-    return [true, null];
+    return;
   } else {
     if (new_pos_offset > 50) {
-      new_pos_offset -= 50;
+      new_pos_offset -= 51;
       pawn.pos_offset = new_pos_offset;
       pawn.in_home_column = true;
-      return [true, null];
+      return;
     }
     pawn.pos_offset = new_pos_offset;
-    return [true, null];
+    return;
   }
 }
 
@@ -528,28 +591,31 @@ function validate_player_pawn_move(
   pawn_index,
   dice_score
 ) {
-  const player_current_position =
-    players[player_index].pawns[pawn_index].pos_offset;
+  const pawn = players[player_index].pawns[pawn_index];
 
-  if (player_current_position === 0) {
+  if (pawn.pos_offset === 0 && pawn.in_starting_area) {
     if (dice_score < 6) {
       return false;
     }
   }
 
-  const player_new_position = player_current_position + dice_score;
+  const pawn_new_position = pawn.pos_offset + dice_score;
 
-  return player_new_position <= 56;
+  return pawn_new_position <= 56;
 }
 
-function is_dice_score_complete(dice_score_arr) {
+function is_player_turn_complete(dice_score_arr, dice_score) {
   const last_score = dice_score_arr[dice_score_arr.length - 1];
 
-  if (last_score !== 6) {
-    return true;
+  if (dice_score === 18) {
+    return { player_turn_complete: true, player_turn_change: true };
   }
 
-  return false;
+  if (last_score !== 6) {
+    return { player_turn_complete: true, player_turn_change: false };
+  }
+
+  return { player_turn_complete: false, player_turn_change: false };
 }
 
 function find_pawn_absolute_position(players, player_index, pawn_index) {
@@ -569,6 +635,14 @@ function reset_pawn(players, player_index, pawn_index) {
   pawn.pos_offset = 0;
   pawn.in_starting_area = true;
   pawn.in_home_column = false;
+}
+
+function is_player_move_complete(dice_score) {
+  if (dice_score > 0) {
+    return false;
+  }
+
+  return true;
 }
 
 module.exports = { create_new };
